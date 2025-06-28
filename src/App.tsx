@@ -1,0 +1,68 @@
+import "./App.css";
+import { getCurrentWindow }                    from "@tauri-apps/api/window";
+import {createBrowserRouter, RouterProvider,
+    useNavigate}                               from "react-router";
+import Home                                    from "./Home.tsx";
+import ClientManager                           from "./ClientManager.tsx";
+
+function Header() {
+    const navigate = useNavigate();
+    return (
+        <main>
+            <div className="bg-slate-950 p-2 flex justify-end sticky top-0 z-50">
+                <div
+                    className="hover:bg-red-500 duration-300 p-2 mr-2 rounded cursor-pointer"
+                    onClick={async () => await getCurrentWindow().close()}>
+                    ✕
+                </div>
+            </div>
+            <div className="flex justify-center items-center">
+                <h1 className="font-mono text-6xl w-min mt-10
+                      text-green-500 font-black italic
+                      drop-shadow-[1px_3px_0px_#166534]
+                      ease-out duration-600
+                      hover:scale-125
+                      hover:drop-shadow-[3px_3px_0px_#166534]
+                      hover:contrast-180
+                      cursor-default
+                      select-none"
+                    onClick={() => {
+                        navigate('/');
+                    }}
+                >
+                    Clientworks
+                </h1>
+            </div>
+        </main>
+    )
+}
+
+function App() {
+    const router = createBrowserRouter([
+        {
+            path: "/",
+            element:
+                <>
+                    <Header/>
+                    <Home/>
+                </>
+        },
+        {
+            path: "/client/:id",
+            element:
+                <>
+                    <Header/>
+                    <ClientManager/>
+                </>
+        }
+    ])
+
+    return (
+        <main>
+
+            <RouterProvider router={router}/>
+        </main>
+    );
+}
+
+export default App;
