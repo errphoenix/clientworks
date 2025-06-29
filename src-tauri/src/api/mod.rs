@@ -49,6 +49,7 @@ pub struct ApiContext {
 }
 
 pub fn load_from_dir(path: PathBuf) -> ApiContext {
+    let path = path.join("clientworks");
     info!("Initialised API context from directory: {path:?}");
     ApiContext {
         controllers: ControllerContainer::new(),
