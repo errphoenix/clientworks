@@ -18,6 +18,7 @@ use azalea::{app::PluginGroup, Account, ClientBuilder, prelude::*, AccountOpts, 
     ServerAddress
 }, FormattedText, DefaultPlugins, DefaultBotPlugins};
 use azalea_chat::style::{Ansi, ChatFormatting};
+use azalea_viaversion::ViaVersionPlugin;
 use tokio::task::JoinHandle;
 use uuid::Uuid;
 
@@ -211,6 +212,7 @@ impl ClientInstance {
         let instance_key = self.id;
         let account = self.account.clone();
         let target = self.target.clone();
+        let version = self.version.clone();
 
         let run_state = self.run_state.clone();
         let chat_inputs = self.chat_inputs.clone();
@@ -221,6 +223,7 @@ impl ClientInstance {
                     .disable::<bevy_log::LogPlugin>()
                 )
                 .add_plugins(DefaultBotPlugins.build())
+                .add_plugins(ViaVersionPlugin::start(version.to_string()).await)
                 .set_handler(handle);
             builder.set_state(
                 ClientState {
