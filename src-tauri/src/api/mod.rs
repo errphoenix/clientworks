@@ -6,9 +6,9 @@ use std::{
     collections::HashMap,
     path::PathBuf,
     sync::Mutex,
-    str::FromStr
+    str::FromStr,
+    ops::DerefMut
 };
-use std::ops::DerefMut;
 use tauri::State;
 use tokio::fs;
 use uuid::Uuid;
@@ -50,8 +50,6 @@ pub struct ApiContext {
 }
 
 pub fn load_from_dir(path: PathBuf) -> ApiContext {
-    let path = path.join("clientworks");
-    fs::create_dir(&path);
     info!("Initialised API context from directory: {path:?}");
     ApiContext {
         controllers: ControllerContainer::new(),
@@ -61,10 +59,6 @@ pub fn load_from_dir(path: PathBuf) -> ApiContext {
         save: path,
         ongoing_auths: HashMap::new()
     }
-}
-
-pub fn create() -> ApiContext {
-    load_from_dir(PathBuf::from(dirs::data_dir().unwrap_or(PathBuf::from("./"))))
 }
 
 #[derive(Serialize, Debug)]

@@ -16,7 +16,7 @@ pub async fn run() {
         .setup(|app| {
             app.manage(AppState {
                 com_channel: Mutex::new(client::hooks::init(app.handle().clone())),
-                api_context: Mutex::new(api::create())
+                api_context: Mutex::new(api::load_from_dir(app.path().app_data_dir().unwrap()))
             });
             {
                 let state = app.state::<AppState>();
