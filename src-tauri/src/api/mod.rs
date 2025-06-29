@@ -50,7 +50,7 @@ pub struct ApiContext {
 }
 
 pub fn load_from_dir(path: PathBuf) -> ApiContext {
-    info!("Initialised API context from directory: {path:?}");
+    info!("Initialised app data from directory: {path:?}");
     ApiContext {
         controllers: ControllerContainer::new(),
         clients: ClientList::from_file(&path),

@@ -1,7 +1,10 @@
 mod api;
 mod client;
 
-use std::sync::Mutex;
+use std::{
+    fs,
+    sync::Mutex
+};
 use tauri::Manager;
 
 pub struct AppState {
@@ -14,6 +17,11 @@ pub async fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_clipboard_manager::init())
         .setup(|app| {
+            let path = app.path().app_data_dir().unwrap();
+            fs::create_dir_all(&path)
+                .expect(format!("Failed to create data directory at: {}",
+                                path.display()).as_str()
+                );
             app.manage(AppState {
                 com_channel: Mutex::new(client::hooks::init(app.handle().clone())),
                 api_context: Mutex::new(api::load_from_dir(app.path().app_data_dir().unwrap()))
