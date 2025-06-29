@@ -28,9 +28,9 @@ env_logger = { version = "0.11.8", features = [
     "auto-color"
 ] }
 log = "0.4.27"
-azalea = "0.13.0+mc1.21.5"
-azalea-auth = "0.13.0+mc1.21.5"
-azalea-chat = "0.13.0+mc1.21.5"
+azalea = { git = "https://github.com/azalea-rs/azalea" }
+azalea-auth = { git = "https://github.com/azalea-rs/azalea" }
+azalea-chat = { git = "https://github.com/azalea-rs/azalea" }
 azalea-viaversion = { git = "https://github.com/azalea-rs/azalea-viaversion" }
 uuid = { version = "1.17.0", features = ["v4"] }
 tokio = "1.45.1"
