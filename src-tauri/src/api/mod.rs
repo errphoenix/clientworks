@@ -10,6 +10,7 @@ use std::{
 };
 use std::ops::DerefMut;
 use tauri::State;
+use tokio::fs;
 use uuid::Uuid;
 
 pub mod auth;
@@ -50,6 +51,7 @@ pub struct ApiContext {
 
 pub fn load_from_dir(path: PathBuf) -> ApiContext {
     let path = path.join("clientworks");
+    fs::create_dir(&path);
     info!("Initialised API context from directory: {path:?}");
     ApiContext {
         controllers: ControllerContainer::new(),
