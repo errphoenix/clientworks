@@ -10,12 +10,16 @@ function Header() {
     const window = getCurrentWindow();
     return (
         <main>
-            <div id="titlebar" className="bg-slate-950 p-2 flex justify-end sticky top-0 z-50"
-            onMouseDown={(e) => {
-                if (e.buttons === 1) {
-                    e.detail === 2 ? window.toggleMaximize() : window.startDragging();
-                }
-            }}>
+
+            <div id="titlebar" className="bg-slate-950 p-2 flex justify-between sticky top-0 z-50"
+                 onMouseDown={(e) => {
+                     if (e.buttons === 1) {
+                         e.detail === 2 ? window.toggleMaximize() : window.startDragging();
+                     }
+                 }}>
+                <div className="text-gray-500 text-sm p-2 select-none">
+                    v0.2.0
+                </div>
                 <div
                     className="hover:bg-red-500 duration-300 p-2 mr-2 rounded cursor-pointer"
                     onClick={async () => await getCurrentWindow().close()}>
