@@ -6,20 +6,17 @@ use std::fmt::format;
 use azalea::Client;
 use azalea::ecs::system::entity_command::insert;
 use azalea::physics::clip::clip;
+use tauri::async_runtime::handle;
 use tauri::State;
 use uuid::Uuid;
-use crate::{
-    AppState,
-    api::{
-        ApiContext,
-        client::ClientConnection
-    },
-    client::{
-        Version,
-        ClientInstance,
-        hooks::Payload
-    }
-};
+use crate::{AppState, api::{
+    ApiContext,
+    client::ClientConnection
+}, client::{
+    Version,
+    ClientInstance,
+    hooks::Payload
+}, client};
 
 // Where present, the ID and KEY parameters represent the UUID of the client and controller, respectively.
 
@@ -171,11 +168,13 @@ pub async fn kill_client_soft(
     ctx.com_channel.lock().unwrap().send(
         key, Payload::Chat { message: "Received soft-kill command...".to_string() }
     );
-    {
+    let (key, mut handle) = {
         let mut ctx = ctx.api_context.lock().unwrap();
         let mut instance = locate_instance(&mut ctx, id, &key)?;
-        instance.soft_kill().await?;
-    }
+        instance.disconnect_notify()?;
+        (instance.id, instance.client_thread.take())
+    };
+    client::soft_kill(&key, &mut handle).await;
     Ok(())
 }
 
