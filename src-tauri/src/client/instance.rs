@@ -39,6 +39,62 @@ impl From<Server> for ServerAddress {
     }
 }
 
+pub enum StateSource {
+    /// Source depends on any value from [`ClientState`] that is retrieved from azalea's events or changed by user actions
+    Client,
+    /// Source depends on thread handle availability
+    Thread,
+    /// Source depends on the client handle received from Azalea's API
+    Handle
+}
+
+impl fmt::Display for StateSource {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        use StateSource::*;
+        write!(f, "{}", match self { 
+            Client => "client",
+            Thread => "thread",
+            Handle => "handle",
+        })
+    }
+}
+
+impl fmt::Debug for StateSource {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        write!(f, "StateSource {{ {self} }}")
+    }
+}
+
+pub enum InstanceEndError {
+    NoHandle,
+    NoConnect(StateSource),
+    JoinError(JoinError)
+}
+
+impl fmt::Display for InstanceEndError {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        use InstanceEndError::*;
+        
+        match self {
+            NoHandle => write!(f, "No thread handle present on client instance."),
+            NoConnect(source) => write!(f, "Client is not connected [{source}]"),
+            JoinError(err) => write!(f, "{}", err)
+        }
+    }
+}
+
+impl fmt::Debug for InstanceEndError {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        write!(f, "KillError {{ {self} }}")
+    }
+}
+
+impl From<InstanceEndError> for String {
+    fn from(value: InstanceEndError) -> Self {
+        format!("{value}")
+    }
+}
+
 pub struct Info {
     pub username: String,
     pub uuid: String,
