@@ -363,22 +363,60 @@ export default function ClientManager() {
                                         >
                                             Disconnect
                                         </button>
-                                        <button
-                                            className="bg-red-800 hover:bg-red-950 px-3 py-1 rounded
-                                                        duration-300"
-                                            title="Directly kills client thread, does not care about disconnecting the client.
-The server will likely recognize this as a client crash."
-                                            onClick={async () => {
-                                                try {
-                                                    await invoke("kill_client", {id: client.id, key: connection.id});
-                                                    setErrLabel(null)
-                                                } catch (e) {
-                                                    setErrLabel(e as string)
-                                                }
-                                            }}
-                                        >
-                                            Kill
-                                        </button>
+                                        <div className="relative inline-block">
+                                            <button
+                                                className="bg-red-800 hover:bg-red-950 px-3 py-1 rounded
+                                                            duration-300"
+                                                onClick={() => setExpandedConnection(index)}
+                                            >
+                                                Kill
+                                            </button>
+                                            {expandedConnection === index && (
+                                                <div
+                                                    className="absolute right-0 mt-2 w-48 rounded-md shadow-lg bg-slate-700 ring-1 ring-black ring-opacity-5">
+                                                    <div className="py-1">
+                                                        <button
+                                                            title="Directly and forcefully aborts client threat.
+Does not guarantee instant client disconnection, will likely recognised as a crash by the server."
+                                                            className="w-full px-4 py-2 text-sm text-left hover:bg-slate-600"
+                                                            onClick={async () => {
+                                                                try {
+                                                                    await invoke("kill_client", {
+                                                                        id: client.id,
+                                                                        key: connection.id
+                                                                    });
+                                                                    setErrLabel(null);
+                                                                    setExpandedConnection(-1);
+                                                                } catch (e) {
+                                                                    setErrLabel(e as string);
+                                                                }
+                                                            }}
+                                                        >
+                                                            Hard Kill
+                                                        </button>
+                                                        <button
+                                                            title="Gracefully shuts down client thread right after its handle is notified to disconnect, to ensure a smoother disconnection.
+This likely become the standard disconnect button."
+                                                            className="w-full px-4 py-2 text-sm text-left hover:bg-slate-600"
+                                                            onClick={async () => {
+                                                                try {
+                                                                    await invoke("kill_client_soft", {
+                                                                        id: client.id,
+                                                                        key: connection.id
+                                                                    });
+                                                                    setErrLabel(null);
+                                                                    setExpandedConnection(-1);
+                                                                } catch (e) {
+                                                                    setErrLabel(e as string);
+                                                                }
+                                                            }}
+                                                        >
+                                                            Soft Kill
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </div>
                                         {errLabel &&
                                             <div className="flex items-center">
                                                 <span className="text-sm text-red-700">{errLabel}</span>

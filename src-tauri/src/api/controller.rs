@@ -143,7 +143,7 @@ pub fn connect_client(
 }
 
 #[tauri::command]
-pub fn disconnect_client(
+pub async fn disconnect_client(
     ctx: State<'_, AppState>,
     id: String, key: String
 ) -> Result<(), String> {
@@ -162,14 +162,32 @@ pub fn disconnect_client(
 }
 
 #[tauri::command]
-pub fn kill_client(
+pub async fn kill_client_soft(
     ctx: State<'_, AppState>,
     id: String, key: String
 ) -> Result<(), String> {
     let key = Uuid::from_str(key.as_str())
         .map_err(|e| format!("{}", e.to_string()))?;
     ctx.com_channel.lock().unwrap().send(
-        key, Payload::Chat { message: "Received force-kill command...".to_string() }
+        key, Payload::Chat { message: "Received soft-kill command...".to_string() }
+    );
+    {
+        let mut ctx = ctx.api_context.lock().unwrap();
+        let mut instance = locate_instance(&mut ctx, id, &key)?;
+        instance.soft_kill().await?;
+    }
+    Ok(())
+}
+
+#[tauri::command]
+pub async fn kill_client(
+    ctx: State<'_, AppState>,
+    id: String, key: String
+) -> Result<(), String> {
+    let key = Uuid::from_str(key.as_str())
+        .map_err(|e| format!("{}", e.to_string()))?;
+    ctx.com_channel.lock().unwrap().send(
+        key, Payload::Chat { message: "Received hard-kill command...".to_string() }
     );
     {
         let mut ctx = ctx.api_context.lock().unwrap();

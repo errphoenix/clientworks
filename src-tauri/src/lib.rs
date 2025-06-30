@@ -53,6 +53,7 @@ pub async fn run() {
             api::controller::disconnect_client,
             api::controller::send_chat,
             api::controller::kill_client,
+            api::controller::kill_client_soft,
             api::controller::get_instances,
             api::controller::get_available_versions,
         ])

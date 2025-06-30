@@ -1,13 +1,14 @@
 use std::{
-    collections::VecDeque, 
+    collections::VecDeque,
     path::PathBuf, fs,
     sync::{
         Arc, Mutex
-    }, 
-    ops::Deref, 
+    },
+    ops::Deref,
     fmt::{
         self, Formatter
     }};
+use std::time::Duration;
 use crate::{
     api::Server,
     client, client::{
@@ -68,7 +69,8 @@ impl fmt::Debug for StateSource {
 pub enum InstanceEndError {
     NoHandle,
     NoConnect(StateSource),
-    JoinError(JoinError)
+    JoinError(JoinError),
+    Timeout
 }
 
 impl fmt::Display for InstanceEndError {
@@ -78,7 +80,8 @@ impl fmt::Display for InstanceEndError {
         match self {
             NoHandle => write!(f, "No thread handle present on client instance."),
             NoConnect(source) => write!(f, "Client is not connected [{source}]"),
-            JoinError(err) => write!(f, "{}", err)
+            JoinError(err) => write!(f, "{}", err),
+            Timeout => write!(f, "Thread cancellation has timed out.")
         }
     }
 }
@@ -284,7 +287,7 @@ impl ClientInstance {
         self.client_thread = Some(tokio::spawn(async move {
             let builder = ClientBuilder::new_without_plugins()
                 .add_plugins(DefaultPlugins.build()
-                    .disable::<bevy_log::LogPlugin>()
+                    // .disable::<bevy_log::LogPlugin>()
                 )
                 .add_plugins(DefaultBotPlugins.build())
                 .add_plugins(ViaVersionPlugin::start(version.to_string()).await)
@@ -306,11 +309,11 @@ impl ClientInstance {
     /// Notifies the client to disconnect, which will then happen on the next tick.
     ///
     /// Alternative for [`Self::disconnect`]
-    pub fn disconnect_notify(&mut self) -> Result<(), String> {
+    pub fn disconnect_notify(&mut self) -> Result<(), InstanceEndError> {
         client::hooks::chatlog::remove_active(&self.id);
         {
             if !*self.run_state.lock().unwrap() {
-                return Err("Client is not connected [state]".to_owned());
+                return Err(InstanceEndError::NoConnect(StateSource::Client))
             }
         }
         {
@@ -322,25 +325,49 @@ impl ClientInstance {
     /// Directly disconnects from Azalea's client handle.
     ///
     /// TODO, use [`Self::disconnect_notify`]
-    pub fn disconnect(&mut self) -> Result<(), String> {
+    pub async fn disconnect(&mut self) -> Result<(), InstanceEndError> {
         client::hooks::chatlog::remove_active(&self.id);
-        let mut guard = self.client.lock().unwrap();
-        if let Some(client) = guard.take() {
-            client.disconnect();
-            if let Some(thread) = self.client_thread.take() {
-                thread.abort();
+        {
+            let mut guard = self.client.lock().unwrap();
+            if let Some(client) = guard.take() {
+                client.disconnect();
+            } else {
+                return Err(InstanceEndError::NoConnect(StateSource::Handle));
             }
-            Ok(())
-        } else {
-            Err("Client is not connected".to_string())
         }
+        self.soft_kill().await
+    }
+
+/// 'Softly' kills the running client thread, if present. This will not abruptly abort the thread.
+/// It notifies the client state to disconnect, which will happen on the next tick; see [`Self::disconnect_notify`].
+///
+/// It will then time out the client thread for 8 seconds. If the thread fails to close by then,
+/// we fall back to hard-killing the thread; i.e., abort it.
+///
+/// It's OK to call this after any other command.
+    pub async fn soft_kill(&mut self) -> Result<(), InstanceEndError> {
+        client::hooks::chatlog::remove_active(&self.id);
+        self.disconnect_notify()?;
+        if let Some(thread) = self.client_thread.take() {
+            return match tokio::time::timeout(
+                Duration::from_secs(8), thread
+            ).await {
+                Ok(_) => Ok(()),
+                Err(_) => Err(InstanceEndError::Timeout)
+            }
+            // return match tokio::join!(thread).0 {
+            //     Ok(_) => Ok(()),
+            //     Err(e) => Err(InstanceEndError::JoinError(e))
+            // };
+        }
+        Err(InstanceEndError::NoConnect(StateSource::Thread))
     }
 
     /// Directly kills the running client thread, if present.
     /// Once the thread has aborted, the client run state is also notified of this change.
     ///
     /// Use is discouraged unless necessary.
-    pub fn kill(&mut self) -> Result<(), String> {
+    pub fn kill(&mut self) -> Result<(), InstanceEndError> {
         client::hooks::chatlog::remove_active(&self.id);
         if let Some(handle) = self.client_thread.take() {
             handle.abort();
@@ -349,7 +376,7 @@ impl ClientInstance {
             }
             Ok(())
         } else {
-            Err("Client is not connected".to_string())
+            Err(InstanceEndError::NoConnect(StateSource::Thread))
         }
     }
 
