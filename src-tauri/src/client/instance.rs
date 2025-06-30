@@ -385,3 +385,17 @@ impl ClientInstance {
         fs::read_to_string(&self.logs_location).unwrap_or_default()
     }
 }
+
+impl Drop for ClientInstance {
+    fn drop(&mut self) {
+        match self.kill() {
+            Ok(_) => {}
+            Err(err) => {
+                match err {
+                    InstanceEndError::NoConnect(_) => {},
+                    _ => warn!("{}", format!("Failed to kill client connection during drop: {err}"))
+                }
+            }
+        }
+    }
+}
