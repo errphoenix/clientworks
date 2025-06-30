@@ -1,11 +1,13 @@
 use std::{
-    collections::VecDeque,
+    collections::VecDeque, 
     path::PathBuf, fs,
     sync::{
         Arc, Mutex
-    },
-    ops::Deref
-};
+    }, 
+    ops::Deref, 
+    fmt::{
+        self, Formatter
+    }};
 use crate::{
     api::Server,
     client, client::{
@@ -13,13 +15,19 @@ use crate::{
         network::ConnectionHandle
     }
 };
-use azalea::{app::PluginGroup, Account, ClientBuilder, prelude::*, AccountOpts, protocol::{
-    packets::game::ClientboundGamePacket,
-    ServerAddress
-}, FormattedText, DefaultPlugins, DefaultBotPlugins};
+use azalea::{
+    app::PluginGroup,
+    Account, ClientBuilder, 
+    prelude::*, AccountOpts, 
+    protocol::{
+        packets::game::ClientboundGamePacket, 
+        ServerAddress
+    }, FormattedText, DefaultPlugins,
+    DefaultBotPlugins
+};
 use azalea_chat::style::{Ansi, ChatFormatting};
 use azalea_viaversion::ViaVersionPlugin;
-use tokio::task::JoinHandle;
+use tokio::task::{JoinError, JoinHandle};
 use uuid::Uuid;
 
 impl From<Server> for ServerAddress {
