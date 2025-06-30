@@ -28,6 +28,7 @@ use azalea::{
 };
 use azalea_chat::style::{Ansi, ChatFormatting};
 use azalea_viaversion::ViaVersionPlugin;
+use log::warn;
 use tokio::task::{JoinError, JoinHandle};
 use uuid::Uuid;
 
@@ -69,7 +70,6 @@ impl fmt::Debug for StateSource {
 pub enum InstanceEndError {
     NoHandle,
     NoConnect(StateSource),
-    JoinError(JoinError),
     Timeout
 }
 
@@ -80,7 +80,6 @@ impl fmt::Display for InstanceEndError {
         match self {
             NoHandle => write!(f, "No thread handle present on client instance."),
             NoConnect(source) => write!(f, "Client is not connected [{source}]"),
-            JoinError(err) => write!(f, "{}", err),
             Timeout => write!(f, "Thread cancellation has timed out.")
         }
     }
@@ -117,7 +116,7 @@ pub struct ClientInstance {
     chat_inputs: ChatInputs,
     client: AzaleaClient,                 // TODO figure out a way to store this lol
     account: Account,
-    client_thread: Option<JoinHandle<()>>
+    pub client_thread: Option<JoinHandle<()>>
 }
 
 type ChatHistory = Arc<Mutex<Vec<String>>>;
@@ -129,6 +128,34 @@ pub struct ClientState {
     pub chat_history: ChatHistory,
     pub chat_inputs: ChatInputs,
     pub run_state: Arc<Mutex<bool>>,
+}
+
+/// 'Softly' kills the running client thread, if present. This will not abruptly abort the thread.
+///
+/// It times out the client thread for 8 seconds. If the thread fails to close by then,
+/// we fall back to hard-killing the thread; i.e., abort it.
+///
+/// It's OK to call this after any other command; it's suggested to run this after
+/// [`ClientInstance::disconnect_notify`] to ensure a smooth disconnection.
+///
+/// # Parameters
+/// * `key` - the key of the instance to remove from the active chat logs registry
+/// * `client_thread` - the optional client thread's `JoinHandle` to perform the operation on
+pub async fn soft_kill(key: &Uuid, client_thread: &mut Option<JoinHandle<()>>) -> Result<(), InstanceEndError> {
+    client::hooks::chatlog::remove_active(key);
+    if let Some(thread) = client_thread.take() {
+        return match tokio::time::timeout(
+            Duration::from_secs(8), thread
+        ).await {
+            Ok(_) => Ok(()),
+            Err(_) => Err(InstanceEndError::Timeout)
+        }
+        // return match tokio::join!(thread).0 {
+        //     Ok(_) => Ok(()),
+        //     Err(e) => Err(InstanceEndError::JoinError(e))
+        // };
+    }
+    Err(InstanceEndError::NoConnect(StateSource::Thread))
 }
 
 fn create_azalea_account(protocol: &AuthProtocol) -> Account {
@@ -325,42 +352,17 @@ impl ClientInstance {
     /// Directly disconnects from Azalea's client handle.
     ///
     /// TODO, use [`Self::disconnect_notify`]
-    pub async fn disconnect(&mut self) -> Result<(), InstanceEndError> {
+    pub fn disconnect(&mut self) -> Result<(), InstanceEndError> {
         client::hooks::chatlog::remove_active(&self.id);
         {
             let mut guard = self.client.lock().unwrap();
             if let Some(client) = guard.take() {
                 client.disconnect();
+                Ok(())
             } else {
-                return Err(InstanceEndError::NoConnect(StateSource::Handle));
+                Err(InstanceEndError::NoConnect(StateSource::Handle))
             }
         }
-        self.soft_kill().await
-    }
-
-/// 'Softly' kills the running client thread, if present. This will not abruptly abort the thread.
-/// It notifies the client state to disconnect, which will happen on the next tick; see [`Self::disconnect_notify`].
-///
-/// It will then time out the client thread for 8 seconds. If the thread fails to close by then,
-/// we fall back to hard-killing the thread; i.e., abort it.
-///
-/// It's OK to call this after any other command.
-    pub async fn soft_kill(&mut self) -> Result<(), InstanceEndError> {
-        client::hooks::chatlog::remove_active(&self.id);
-        self.disconnect_notify()?;
-        if let Some(thread) = self.client_thread.take() {
-            return match tokio::time::timeout(
-                Duration::from_secs(8), thread
-            ).await {
-                Ok(_) => Ok(()),
-                Err(_) => Err(InstanceEndError::Timeout)
-            }
-            // return match tokio::join!(thread).0 {
-            //     Ok(_) => Ok(()),
-            //     Err(e) => Err(InstanceEndError::JoinError(e))
-            // };
-        }
-        Err(InstanceEndError::NoConnect(StateSource::Thread))
     }
 
     /// Directly kills the running client thread, if present.
