@@ -43,7 +43,6 @@ export default function ClientManager() {
     const [client, setClient] = useState<ClientEntry | null>(null);
     const [connections, setConnections] = useState<Connection[]>([]);
     const [expandedConnection, setExpandedConnection] = useState<number>(-1);
-    const [killOptionsVisible, setKillOptionsVisible] = useState<boolean>(false);
 
     const [chatHistory, setChatHistory] = useState<Record<string, string[]>>({});
     const [chatMessage, setChatMessage] = useState<string>("");
@@ -352,13 +351,16 @@ export default function ClientManager() {
                                             className="bg-red-600 hover:bg-red-800 px-3 py-1 rounded
                                                         duration-300"
                                             disabled={!connection.connected}
-                                            title="DO NOT USE. USE KILL FOR NOW. (UNLESS YOU WANT MEMORY LEAKS)"
+                                            title="Gracefully shuts down client thread right after its handle is notified to disconnect, to ensure a smoother disconnection. Disconnection is near instant unless impacted by lag, but this is not guaranteed."
                                             onClick={async () => {
                                                 try {
-                                                    await invoke("disconnect_client", {id: client.id, key: connection.id});
-                                                    setErrLabel(null)
+                                                    await invoke("kill_client_soft", {
+                                                        id: client.id,
+                                                        key: connection.id
+                                                    });
+                                                    setErrLabel(null);
                                                 } catch (e) {
-                                                    setErrLabel(e as string)
+                                                    setErrLabel(e as string);
                                                 }
                                             }}
                                         >
@@ -368,53 +370,22 @@ export default function ClientManager() {
                                             <button
                                                 className="bg-red-800 hover:bg-red-950 px-3 py-1 rounded
                                                             duration-300"
-                                                onClick={() => setKillOptionsVisible(!killOptionsVisible)}
+                                                title="Directly and forcefully aborts client thread, instantly freeing resources.
+Does not guarantee instant client disconnection, will likely be recognised as a crash by the server once it naturally times out."
+                                                onClick={async () => {
+                                                    try {
+                                                        await invoke("kill_client", {
+                                                            id: client.id,
+                                                            key: connection.id
+                                                        });
+                                                        setErrLabel(null);
+                                                    } catch (e) {
+                                                        setErrLabel(e as string);
+                                                    }
+                                                }}
                                             >
                                                 Kill
                                             </button>
-                                            {killOptionsVisible && (
-                                                <div
-                                                    className="absolute right-0 mt-2 w-48 rounded-md shadow-lg bg-slate-700 ring-1 ring-black ring-opacity-5">
-                                                    <div className="py-1">
-                                                        <button
-                                                            title="Directly and forcefully aborts client thread, instantly freeing resources.
-Does not guarantee instant client disconnection, will likely be recognised as a crash by the server once it naturally times out."
-                                                            className="w-full px-4 py-2 text-sm text-left hover:bg-slate-600"
-                                                            onClick={async () => {
-                                                                try {
-                                                                    await invoke("kill_client", {
-                                                                        id: client.id,
-                                                                        key: connection.id
-                                                                    });
-                                                                    setErrLabel(null);
-                                                                } catch (e) {
-                                                                    setErrLabel(e as string);
-                                                                }
-                                                            }}
-                                                        >
-                                                            Hard Kill
-                                                        </button>
-                                                        <button
-                                                            title="Gracefully shuts down client thread right after its handle is notified to disconnect, to ensure a smoother disconnection. Disconnection is near instant unless impacted by lag, but this is not guaranteed.
-This will likely become the standard disconnect button."
-                                                            className="w-full px-4 py-2 text-sm text-left hover:bg-slate-600"
-                                                            onClick={async () => {
-                                                                try {
-                                                                    await invoke("kill_client_soft", {
-                                                                        id: client.id,
-                                                                        key: connection.id
-                                                                    });
-                                                                    setErrLabel(null);
-                                                                } catch (e) {
-                                                                    setErrLabel(e as string);
-                                                                }
-                                                            }}
-                                                        >
-                                                            Soft Kill
-                                                        </button>
-                                                    </div>
-                                                </div>
-                                            )}
                                         </div>
                                         {errLabel &&
                                             <div className="flex items-center">
