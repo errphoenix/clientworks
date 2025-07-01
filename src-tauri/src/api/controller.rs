@@ -7,6 +7,7 @@ use std::sync::Arc;
 use azalea::Client;
 use azalea::ecs::system::entity_command::insert;
 use azalea::physics::clip::clip;
+use tauri::async_runtime::handle;
 use tauri::State;
 use uuid::Uuid;
 use crate::{
@@ -160,7 +161,7 @@ pub fn connect_client(
 }
 
 #[tauri::command]
-pub fn disconnect_client(
+pub async fn disconnect_client(
     ctx: State<'_, AppState>,
     id: String, key: String
 ) -> Result<(), String> {
@@ -179,14 +180,34 @@ pub fn disconnect_client(
 }
 
 #[tauri::command]
-pub fn kill_client(
+pub async fn kill_client_soft(
     ctx: State<'_, AppState>,
     id: String, key: String
 ) -> Result<(), String> {
     let key = Uuid::from_str(key.as_str())
         .map_err(|e| format!("{}", e.to_string()))?;
     ctx.com_channel.lock().unwrap().send(
-        key, Payload::Chat { message: "Received force-kill command...".to_string() }
+        key, Payload::Chat { message: "Received soft-kill command...".to_string() }
+    );
+    let (key, mut handle) = {
+        let mut ctx = ctx.api_context.lock().unwrap();
+        let mut instance = locate_instance(&mut ctx, id, &key)?;
+        instance.disconnect_notify()?;
+        (instance.id, instance.client_thread.take())
+    };
+    client::soft_kill(&key, &mut handle).await;
+    Ok(())
+}
+
+#[tauri::command]
+pub async fn kill_client(
+    ctx: State<'_, AppState>,
+    id: String, key: String
+) -> Result<(), String> {
+    let key = Uuid::from_str(key.as_str())
+        .map_err(|e| format!("{}", e.to_string()))?;
+    ctx.com_channel.lock().unwrap().send(
+        key, Payload::Chat { message: "Received hard-kill command...".to_string() }
     );
     {
         let mut ctx = ctx.api_context.lock().unwrap();

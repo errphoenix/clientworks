@@ -27,7 +27,12 @@ mod instance;
 pub mod hooks;
 
 #[allow(unused)]
-pub use instance::{ClientInstance, ClientState, Info};
+pub use instance::{
+    ClientInstance,
+    ClientState,
+    Info,
+    soft_kill
+};
 
 lazy_static! {
     static ref LOG_DIR: PathBuf = dirs::data_dir().unwrap_or_default();
