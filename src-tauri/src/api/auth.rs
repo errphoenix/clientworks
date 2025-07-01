@@ -316,7 +316,7 @@ pub async fn auth_ms_finish(
                             Arc::new(AuthProtocol::Microsoft(
                                 token.mca.data.access_token.clone(),
                                 Box::new(msa), Box::new(profile.clone())
-                            )),
+                            ))
                         );
                         ctx.controllers.add(controller);
                         id.to_string()
