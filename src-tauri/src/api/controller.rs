@@ -3,6 +3,7 @@ use std::{
     str::FromStr
 };
 use std::fmt::format;
+use std::sync::Arc;
 use azalea::Client;
 use azalea::ecs::system::entity_command::insert;
 use azalea::physics::clip::clip;
@@ -20,7 +21,9 @@ use crate::{
         hooks::Payload
     }
 };
-
+use crate::api::client::AuthType;
+use crate::client::{AuthProtocol, ClientController};
+use crate::client::auth::MinecraftProfile;
 // Where present, the ID and KEY parameters represent the UUID of the client and controller, respectively.
 
 #[tauri::command]
@@ -58,18 +61,32 @@ pub fn get_instances(
     ctx: State<'_, AppState>,
     id: String
 ) -> Result<HashMap<String, (bool, ClientConnection)>, String> {
-    let ctx = ctx.api_context.lock().unwrap();
+    let mut ctx = ctx.api_context.lock().unwrap();
     let uuid = match Uuid::from_str(id.as_str()) {
         Ok(uuid) => uuid,
         Err(_) => return Err("Invalid UUID".to_string())
     };
-    if let Some(client) = ctx.clients.get_by_id(&uuid) {
+    let client = {
+        ctx.clients.get_by_id(&uuid).cloned()
+    };
+    if let Some(client) = client {
         let controller = {
-            let option = ctx.controllers.get(&Uuid::from_str(id.as_str()).unwrap());
-            if option.is_none() {
-                return Err("Controller not found".to_string());
+            let id = Uuid::from_str(id.as_str()).unwrap();
+            if let Some(controller) = ctx.controllers.get(&id) {
+                controller
+            } else {
+                if client.auth == AuthType::Microsoft {
+                    return Err("Controller not found".to_string())
+                } else {
+                    let profile = MinecraftProfile::with_username(client.username.clone());
+                    let controller = ClientController::new(
+                        client.id, client.username.clone(), profile.uuid,
+                        Arc::new(AuthProtocol::Offline(client.username.clone()))
+                    );
+                    ctx.controllers.add(controller);
+                    &ctx.controllers.get(&id).unwrap()
+                }
             }
-            option.unwrap()
         };
 
         let map = {

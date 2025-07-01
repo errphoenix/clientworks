@@ -141,17 +141,18 @@ export default function ClientManager() {
 
     const intervalRef = useRef(0);
     useLayoutEffect(() => {
-        invoke("recall_authentication", { id: id })
-            .then(b => {
-                setAllowed({value: b as boolean});
-                setLoading(false);
-            })
-            .catch(e => {
-                console.error('Authentication error:', e);
-                setAllowed({value: false, error: e});
-                setLoading(false);
-            })
-
+        if (client?.auth) {
+            invoke("recall_authentication", {id: id})
+                .then(b => {
+                    setAllowed({value: b as boolean});
+                    setLoading(false);
+                })
+                .catch(e => {
+                    console.error('Authentication error:', e);
+                    setAllowed({value: false, error: e});
+                    setLoading(false);
+                })
+        }
         pollStatus();
         intervalRef.current = setInterval(pollStatus, 5000);
         return () => clearInterval(intervalRef.current);
