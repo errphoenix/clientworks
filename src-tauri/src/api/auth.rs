@@ -195,9 +195,14 @@ pub async fn auth_offline(
         return Err("Account already exists.".to_string())
     }
     emit_progress_event(&app, &AuthState::Working("Offline account created.".to_string()));
-    let profile = MinecraftProfile::with_username(username);
-    let id = crate::api::client::register(&mut ctx, &profile)?.to_string();
-    Ok((id, profile))
+    let profile = MinecraftProfile::with_username(username.clone());
+    let id = crate::api::client::register(&mut ctx, &profile)?;
+    let controller = ClientController::new(
+        id, username.clone(), profile.uuid,
+        Arc::new(AuthProtocol::Offline(username))
+    );
+    ctx.controllers.add(controller);
+    Ok((id.to_string(), profile))
 }
 
 fn cached_authentication(
