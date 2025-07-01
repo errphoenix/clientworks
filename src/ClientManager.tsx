@@ -441,7 +441,7 @@ This will likely become the standard disconnect button."
                                             placeholder="Type a message..."
                                             value={chatMessage}
                                             onChange={(e) => setChatMessage(e.target.value)}
-                                            onKeyPress={(e) => {
+                                            onKeyDown={(e) => {
                                                 if (e.key === 'Enter' && chatMessage.trim()) {
                                                     sendChatMessage(connection, chatMessage);
                                                 }
