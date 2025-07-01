@@ -32,7 +32,6 @@ type Connection = {
     connected: boolean
 }
 
-
 export default function ClientManager() {
     const { id } = useParams<{ id: string }>();
 
