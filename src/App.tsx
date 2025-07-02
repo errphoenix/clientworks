@@ -18,7 +18,7 @@ function Header() {
                      }
                  }}>
                 <div className="text-gray-500 text-sm p-2 select-none">
-                    v0.2.0
+                    v0.2.1
                 </div>
                 <div
                     className="hover:bg-red-500 duration-300 p-2 mr-2 rounded cursor-pointer"

@@ -1,6 +1,6 @@
 [package]
 name = "Clientworks"
-version = "0.2.0"
+version = "0.2.1"
 description = "Fast and easy to use Minecraft bot manager."
 authors = ["HerrPhoenix"]
 edition = "2024"
