@@ -130,6 +130,8 @@ pub struct ClientState {
     pub run_state: Arc<Mutex<bool>>,
 }
 
+// TODO find a proper way of removing client from chatlog when disconnected or killed while avoiding discarding the disconnect message
+
 /// 'Softly' kills the running client thread, if present. This will not abruptly abort the thread.
 ///
 /// It times out the client thread for 8 seconds. If the thread fails to close by then,
@@ -139,10 +141,10 @@ pub struct ClientState {
 /// [`ClientInstance::disconnect_notify`] to ensure a smooth disconnection.
 ///
 /// # Parameters
-/// * `key` - the key of the instance to remove from the active chat logs registry
+/// * `key` - the key of the instance to remove from the active chat logs registry - unused for now
 /// * `client_thread` - the optional client thread's `JoinHandle` to perform the operation on
-pub async fn soft_kill(key: &Uuid, client_thread: &mut Option<JoinHandle<()>>) -> Result<(), InstanceEndError> {
-    client::hooks::chatlog::remove_active(key);
+pub async fn soft_kill(_key: &Uuid, client_thread: &mut Option<JoinHandle<()>>) -> Result<(), InstanceEndError> {
+    // client::hooks::chatlog::remove_active(key);
     if let Some(thread) = client_thread.take() {
         return match tokio::time::timeout(
             Duration::from_secs(8), thread
@@ -222,6 +224,7 @@ async fn handle(client: Client, event: Event, state: ClientState) -> anyhow::Res
                 chat.push(msg.message().to_ansi());
             }
             client::hooks::chatlog::set_active(state.instance_key, state.chat_history.clone());
+            *state.run_state.lock().unwrap() = false; // update on UI
         },
         Event::Init => {
             let mut chat = state.chat_history.lock().unwrap();
@@ -235,6 +238,7 @@ async fn handle(client: Client, event: Event, state: ClientState) -> anyhow::Res
             chat.push(format!("{red}Disconnected from server: {}",
                               reason.unwrap_or(FormattedText::from("No reason provided.")))
             );
+            *state.run_state.lock().unwrap() = false; // update on UI
         }
         Event::Packet(packet) => {
             let packet = packet.clone();
@@ -319,14 +323,14 @@ impl ClientInstance {
                 .add_plugins(DefaultBotPlugins.build())
                 .add_plugins(ViaVersionPlugin::start(version.to_string()).await)
                 .set_handler(handle);
-            builder.set_state(
-                ClientState {
-                    instance_key,
-                    run_state,
-                    chat_inputs,
-                    ..Default::default()
-                }
-            )
+            let state = ClientState {
+                instance_key,
+                run_state,
+                chat_inputs,
+                ..Default::default()
+            };
+            client::hooks::chatlog::set_active(state.instance_key, state.chat_history.clone());
+            builder.set_state(state)
                 .reconnect_after(None)
                 .start(account, target)
                 .await.unwrap();
@@ -337,7 +341,7 @@ impl ClientInstance {
     ///
     /// Alternative for [`Self::disconnect`]
     pub fn disconnect_notify(&mut self) -> Result<(), InstanceEndError> {
-        client::hooks::chatlog::remove_active(&self.id);
+        // client::hooks::chatlog::remove_active(&self.id);
         {
             if !*self.run_state.lock().unwrap() {
                 return Err(InstanceEndError::NoConnect(StateSource::Client))
@@ -353,7 +357,7 @@ impl ClientInstance {
     ///
     /// TODO, use [`Self::disconnect_notify`]
     pub fn disconnect(&mut self) -> Result<(), InstanceEndError> {
-        client::hooks::chatlog::remove_active(&self.id);
+        // client::hooks::chatlog::remove_active(&self.id);
         {
             let mut guard = self.client.lock().unwrap();
             if let Some(client) = guard.take() {
@@ -370,7 +374,7 @@ impl ClientInstance {
     ///
     /// Use is discouraged unless necessary.
     pub fn kill(&mut self) -> Result<(), InstanceEndError> {
-        client::hooks::chatlog::remove_active(&self.id);
+        // client::hooks::chatlog::remove_active(&self.id);
         if let Some(handle) = self.client_thread.take() {
             handle.abort();
             {
