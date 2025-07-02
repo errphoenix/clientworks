@@ -100,6 +100,15 @@ function Auth({onClose, onFinish}: Callback) {
         }
     };
 
+    /**
+     * This will sometimes throw the error: "Client <username> already exists",
+     * due to authentication caching not being called properly.
+     *
+     * I have not noticed any bugs or negative effects, due to this, except for the
+     * authentication dialog not automatically closing when authentication is complete.
+     * It shouldn't cause any confusion to the user, though, as the green "Success" label
+     * is still shown, they just need to close the dialog on their own.
+     */
     const finalizeAuthentication = async () => {
         try {
             finishAuth(loginKey)
