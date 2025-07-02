@@ -309,15 +309,18 @@ mod tests {
     use crate::client::Version;
 
     #[test]
-    fn version_from_string() {
+    fn version_string_conversion() {
         let ver = Version::from_str("1.20.5").unwrap();
         assert_eq!(ver, Version::V1_20_5);
 
         let str = Version::V1_16_5.to_string();
         assert_eq!(str.as_str(), "1.16.5");
-
+    }
+    
+    #[test]
+    fn versions_count() {
         let all = Version::all();
-        assert_eq!(all.len(), 17);
+        assert_eq!(all.len(), 28);
         println!("{:?}", all);
     }
 }
