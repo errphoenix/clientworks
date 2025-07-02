@@ -40,6 +40,10 @@ lazy_static! {
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Version {
+    V1_16,
+    V1_16_1,
+    V1_16_2,
+    V1_16_3,
     V1_16_4,
     V1_16_5,
     V1_17,
@@ -57,11 +61,18 @@ pub enum Version {
     V1_20_4,
     V1_20_5,
     V1_21,
+    V1_21_1,
+    V1_21_2,
+    V1_21_3,
+    V1_21_4,
+    V1_21_5,
+    V1_21_6,
+    V1_21_7,
 }
 
 impl Default for Version {
     fn default() -> Self {
-        Self::V1_21
+        Self::V1_21_7
     }
 }
 
@@ -96,6 +107,10 @@ impl FromStr for Version {
 impl Version {
     pub fn from_string(version: &str) -> Option<Self> {
         match version {
+            "1.16" => Some(Self::V1_16),
+            "1.16.1" => Some(Self::V1_16_1),
+            "1.16.2" => Some(Self::V1_16_2),
+            "1.16.3" => Some(Self::V1_16_3),
             "1.16.4" => Some(Self::V1_16_4),
             "1.16.5" => Some(Self::V1_16_5),
             "1.17" => Some(Self::V1_17),
@@ -113,19 +128,25 @@ impl Version {
             "1.20.4" => Some(Self::V1_20_4),
             "1.20.5" => Some(Self::V1_20_5),
             "1.21" => Some(Self::V1_21),
+            "1.21.1" => Some(Self::V1_21_1),
+            "1.21.2" => Some(Self::V1_21_2),
+            "1.21.3" => Some(Self::V1_21_3),
+            "1.21.4" => Some(Self::V1_21_4),
+            "1.21.5" => Some(Self::V1_21_5),
+            "1.21.6" => Some(Self::V1_21_6),
+            "1.21.7" => Some(Self::V1_21_7),
             _ => None,
         }
     }
 
     pub fn all() -> Vec<Version> {
         vec![
-            Self::V1_16_4, Self::V1_16_5,
+            Self::V1_16, Self::V1_16_1, Self::V1_16_2, Self::V1_16_3, Self::V1_16_4, Self::V1_16_5,
             Self::V1_17, Self::V1_17_1,
             Self::V1_18, Self::V1_18_1, Self::V1_18_2,
             Self::V1_19, Self::V1_19_1, Self::V1_19_2,
-            Self::V1_20, Self::V1_20_1, Self::V1_20_2,
-            Self::V1_20_3, Self::V1_20_4, Self::V1_20_5,
-            Self::V1_21,
+            Self::V1_20, Self::V1_20_1, Self::V1_20_2, Self::V1_20_3, Self::V1_20_4, Self::V1_20_5,
+            Self::V1_21, Self::V1_21_1, Self::V1_21_2, Self::V1_21_3, Self::V1_21_4, Self::V1_21_5, Self::V1_21_6, Self::V1_21_7,
         ]
     }
 }
@@ -133,6 +154,10 @@ impl Version {
 impl Display for Version {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
+            Version::V1_16 => write!(f, "1.16"),
+            Version::V1_16_1 => write!(f, "1.16.1"),
+            Version::V1_16_2 => write!(f, "1.16.2"),
+            Version::V1_16_3 => write!(f, "1.16.3"),
             Version::V1_16_4 => write!(f, "1.16.4"),
             Version::V1_16_5 => write!(f, "1.16.5"),
             Version::V1_17 => write!(f, "1.17"),
@@ -150,6 +175,13 @@ impl Display for Version {
             Version::V1_20_4 => write!(f, "1.20.4"),
             Version::V1_20_5 => write!(f, "1.20.5"),
             Version::V1_21 => write!(f, "1.21"),
+            Version::V1_21_1 => write!(f, "1.21.1"),
+            Version::V1_21_2 => write!(f, "1.21.2"),
+            Version::V1_21_3 => write!(f, "1.21.3"),
+            Version::V1_21_4 => write!(f, "1.21.4"),
+            Version::V1_21_5 => write!(f, "1.21.5"),
+            Version::V1_21_6 => write!(f, "1.21.6"),
+            Version::V1_21_7 => write!(f, "1.21.7"),
         }
     }   
 }
