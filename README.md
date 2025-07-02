@@ -31,6 +31,13 @@ While the `clients.json` and `servers.json` don't contain any sensible informati
 
 ---
 
+## Upcoming Features
+* **More in-depth instance page** | to view more details on the server you're connected to (such as player count, player list, uptime)
+* **Better control over clients** | being able to control more aspects of the clients such as movement and interactions
+* **Macros** | to execute complex actions with one click 
+* **Swarms** | to quickly send groups of clients on a server (that's why the "Server" tab might seem pointless for now)
+* **Scripting** | to script more complex bots and interactions with the server and other players
+
 ## Development Setup
 If you wish to compile Clientworks from source:
 1. **Clone the repository:**
