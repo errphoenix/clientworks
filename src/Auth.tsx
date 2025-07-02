@@ -72,17 +72,17 @@ function Auth({onClose, onFinish}: Callback) {
                     .then(
                         result => completeAuth(result)
                     ).catch(e => {
-                    console.log("Cached auth failed: " + e);
-                    let credentialsRequest: Promise<Credentials> = invoke("auth_ms_init", {loginKey: loginKey});
-                    credentialsRequest.then(e => {
-                        setCredentials({
-                            uri: e.uri,
-                            code: e.code
-                        });
-                    })
-                        .catch(e => {
-                            throw (e)
-                        });
+                        console.log("Cached auth failed: " + e);
+                        let credentialsRequest: Promise<Credentials> = invoke("auth_ms_init", {loginKey: loginKey});
+                        credentialsRequest.then(e => {
+                            setCredentials({
+                                uri: e.uri,
+                                code: e.code
+                            });
+                        })
+                            .catch(e => {
+                                throw (e)
+                            });
                     });
             } else {
                 await offlineAuth(loginKey)
