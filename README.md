@@ -26,13 +26,14 @@ These directories store the clients list (`clients.json`), server list (`servers
 
 ---
 
-**(!) IMPORTANT** While the `clients.json` and `servers.json` don't contain any sensible information, the authentication cache, `auth_cache.json`, contains your account's access token, so do **not** share this file to people you don't trust, as it may be used to gain access to your account if the token is still valid.
+**(!) IMPORTANT** 
+While the `clients.json` and `servers.json` don't contain any sensible information, the authentication cache, `auth_cache.json`, contains your account's access token, so do **not** share this file to people you don't trust, as it may be used to gain access to your account if the token is still valid.
 
 ---
 
 ## Development Setup
 If you wish to compile Clientworks from source:
-1. **Clone the repository:***
+1. **Clone the repository:**
 ```bash
 git clone https://github.com/errphoenix/clientworks.git
 cd clientworks
