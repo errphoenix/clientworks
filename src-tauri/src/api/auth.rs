@@ -5,7 +5,8 @@ use crate::{
         ClientController,
         auth::{
             MinecraftProfile,
-            self, AuthState
+            self, AuthState,
+            refresh_ms
         }
     },
     AppState
@@ -27,11 +28,8 @@ use azalea::{
     Account,
     ecs::error::info
 };
-use azalea_auth::{
-    AccessTokenResponse,
-    cache::ExpiringValue
-};
-use log::info;
+use azalea_auth::{AccessTokenResponse, cache::ExpiringValue, RefreshMicrosoftAuthTokenError};
+use log::{debug, info};
 use tauri::{
     AppHandle,
     Emitter,
@@ -148,36 +146,60 @@ pub async fn recall_authentication(
     ctx: State<'_, AppState>,
     id: String
 ) -> Result<bool, String> {
-    let mut ctx = ctx.api_context.lock().unwrap();
     let uuid = {
         Uuid::from_str(id.as_str()).map_err(|err| { err.to_string() })?
     };
 
-    if ctx.controllers.get(&uuid).is_some() {
+    if cfg!(debug_assertions) { debug!("Recalling auth") }
+
+    // TODO add an hyperlink to the 'report a bug' text
+    const LABEL_BUG_REPORT: &'static str = "<u className=\"text-red-500\">Report a bug</u> if you believe this is an error.";
+
+    if { let guard = ctx.api_context.lock().unwrap();
+        guard.controllers.get(&uuid).is_some() } {
+        if cfg!(debug_assertions) { debug!("Client is already authenticated.") }
         Ok(true)
     } else {
-        // TODO add an hyperlink to the 'report a bug' text
-        let label_bug_report = "<u className=\"text-red-500\">Report a bug</u> if you believe this is an error.";
-
-        let client = ctx.clients.get_by_id(&uuid);
-        if let Some(client) = client {
-            let key = {
-                ctx.auth_cache.get_key_from_mc_uuid(&client.uuid)
-                    .ok_or_else(|| format!(
-                        r#"<div>No authentication key found in cache for client with ID <u className=\"text-red-400\">{}</u>.
-                        <br />Please check your account cache in <u className=\"text-red-400\">auth_cache.json</u> if allowed to.
-                        <br /> <br />
-                        {label_bug_report}</div>"#,
-                        client.uuid
-                    ))?.clone()
+        if cfg!(debug_assertions) { debug!("Client is not already authenticated.") }
+        let key: Option<String> = {
+            let client_uuid: Option<Uuid> = {
+                let guard = ctx.api_context.lock().unwrap();
+                guard.clients.get_by_id(&uuid).and_then(|client| Some(client.uuid))
             };
-            let result = cached_authentication(app, &mut ctx, &key);
-            match result {
+            if let Some(client_uuid) = client_uuid {
+                if cfg!(debug_assertions) { debug!("Got client") }
+                let key = {
+                    if cfg!(debug_assertions) { debug!("Getting key...") }
+                    let guard = ctx.api_context.lock().unwrap();
+                    if cfg!(debug_assertions) { debug!("Guard") }
+                    guard.auth_cache.get_key_from_mc_uuid(&client_uuid)
+                        .ok_or_else(|| {
+                            if cfg!(debug_assertions) { debug!("No authentication key is linked to the provided client's account.") }
+                            format!(
+                                r#"<div>No authentication key found in cache for client with ID <u className=\"text-red-400\">{}</u>.
+                    <br />Please check your account cache in <u className=\"text-red-400\">auth_cache.json</u> if allowed to.
+                    <br /> <br />
+                    {LABEL_BUG_REPORT}</div>"#,
+                                client_uuid
+                            )
+                        })?.clone()
+                };
+                if cfg!(debug_assertions) { debug!("Got key") }
+                Some(key)
+            } else {
+                if cfg!(debug_assertions) { debug!("Client from provided ID is not registered.") }
+                None
+            }
+        };
+
+        if let Some(key) = key {
+            if cfg!(debug_assertions) { debug!("Auth key found in cache") }
+            match cached_authentication(app, ctx.api_context.clone(), &key).await {
                 Ok(_) => Ok(true),
-                Err(e) => Err(format!("<div>{e}<br /><br />{label_bug_report}</div>"))
+                Err(e) => Err(format!("<div>{e}<br /><br />{LABEL_BUG_REPORT}</div>"))
             }
         } else {
-            Err(format!("<div>No client registered with ID: {uuid}<br /><br />{label_bug_report}</div>"))
+            Err(format!("<div>No client registered with ID: {uuid}<br /><br />{LABEL_BUG_REPORT}</div>"))
         }
     }
 }
@@ -205,20 +227,45 @@ pub async fn auth_offline(
     Ok((id.to_string(), profile))
 }
 
-fn cached_authentication(
+async fn cached_authentication(
     app: AppHandle,
-    api_context: &mut ApiContext,
+    api_context: Arc<Mutex<ApiContext>>,
     login_key: &String,
 ) -> Result<(String, MinecraftProfile), String> {
     emit_progress_event(&app, &AuthState::Working("Looking for cache...".to_string()));
     let cache = {
-        let cache = api_context.auth_cache.0.get(login_key);
+        let cache = {
+            let guard = api_context.lock().unwrap();
+            guard.auth_cache.0.get(login_key).cloned()
+        };
         if let Some(cache) = cache {
             if cache.has_expired() {
-                emit_progress_event(&app, &AuthState::Error("Cache expired, re-authentication is required.".to_string()));
-                None
+                if cfg!(debug_assertions) { debug!("Cache expired, refreshing...") }
+                emit_progress_event(&app, &AuthState::Working("Cache expired, refresh is required.".to_string()));
+                match refresh_ms(|state| {
+                    emit_progress_event(&app, state);
+                }, &cache.msa).await {
+                    Ok(msa) => {
+                        if cfg!(debug_assertions) { debug!("Token refreshed, all good.") }
+                        Some(MinecraftAuthCache {
+                            access_token: cache.access_token.clone(),
+                            expiration: msa.expires_at,
+                            msa,
+                            profile: cache.profile.clone(),
+                        })
+                    },
+                    Err(e) => {
+                        if cfg!(debug_assertions) { debug!("Failed to refresh authentication token.") }
+                        emit_progress_event(&app, &AuthState::Error(format!(
+                            "Failed to refresh authentication token, re-authentication is required: {e}"
+                        )));
+                        None
+                    }
+                }
             } else {
+                if cfg!(debug_assertions) { debug!("Cache is valid") }
                 emit_progress_event(&app, &AuthState::Working("Valid cache found.".to_string()));
+                if cfg!(debug_assertions) { debug!("Authentication from cache complete.") }
                 Some(cache.clone())
             }
         } else {
@@ -230,18 +277,22 @@ fn cached_authentication(
     if let Some(cache) = cache {
         let client_id = {
             let uuid = &cache.profile.uuid;
-            if let Some(client) = api_context.clients.get_by_mc_uuid(uuid) {
+            let mut guard = api_context.lock().unwrap();
+            if let Some(client) = guard.clients.get_by_mc_uuid(uuid) {
                 &client.id.clone()
             } else {
                 emit_progress_event(&app, &AuthState::Working("Registering new client from cached profile...".to_string()));
-                &crate::api::client::register(api_context, &cache.profile)?
+                &crate::api::client::register(&mut guard, &cache.profile)?
             }
         };
         emit_progress_event(&app, &AuthState::Success("Cache successfully validated, authentication is allowed.".to_string()));
-        let controller = ClientController::new_cached(api_context, client_id, &cache)?;
-        api_context.controllers.add(controller);
-        let profile = &cache.profile;
-        return Ok((client_id.to_string(), profile.clone()));
+        let mut guard = api_context.lock().unwrap();
+        let controller = ClientController::new_cached(&mut guard, client_id, &cache)?;
+        guard.controllers.add(controller);
+        let profile = cache.profile.clone();
+        guard.auth_cache.0.insert(login_key.clone(), cache);
+        guard.auth_cache.write_to_file(&guard.save);
+        return Ok((client_id.to_string(), profile));
     }
     emit_progress_event(&app, &AuthState::Error("Account not found in cache.".to_string()));
     Err("Account not found in cache or cached token(s) have expired.".to_string())
@@ -253,8 +304,10 @@ pub async fn auth_ms_cache(
     ctx: State<'_, AppState>,
     login_key: String,
 ) -> Result<(String, MinecraftProfile), String> {
-    let mut guard = ctx.api_context.lock().unwrap();
-    cached_authentication(app, &mut guard, &login_key)
+    match cached_authentication(app, ctx.api_context.clone(), &login_key).await {
+        Ok(result) => Ok(result),
+        Err(e) => Err(e)
+    }
 }
 
 #[tauri::command]

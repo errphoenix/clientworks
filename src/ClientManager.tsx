@@ -35,7 +35,7 @@ type Connection = {
 export default function ClientManager() {
     const { id } = useParams<{ id: string }>();
 
-    const [allowed, setAllowed] = useState<{value: boolean, error?: string}>({value: true});
+    const [allowed, setAllowed] = useState<{value: boolean, validating: boolean, error?: string}>({value: false, validating: true});
     const [loading, setLoading] = useState(true);
     const [showAuth, setShowAuth] = useState(false);
 
@@ -143,12 +143,12 @@ export default function ClientManager() {
         if (client?.auth) {
             invoke("recall_authentication", {id: id})
                 .then(b => {
-                    setAllowed({value: b as boolean});
+                    setAllowed({value: b as boolean, validating: false});
                     setLoading(false);
                 })
                 .catch(e => {
                     console.error('Authentication error:', e);
-                    setAllowed({value: false, error: e});
+                    setAllowed({value: false, validating: false, error: e});
                     setLoading(false);
                 })
         }
@@ -438,22 +438,38 @@ Does not guarantee instant client disconnection, will likely be recognised as a 
             </div>
                 :
                 <div className="flex justify-center mt-12">
-                    <div className="bg-red-800 rounded-lg text-red-50 w-1/2 p-8">
-                        <p>This client has failed to authenticate.</p>
-                        <p className="mt-2 text-sm text-red-300">
-                            <span>Error details: </span>
-                            <div dangerouslySetInnerHTML={{__html: allowed.error ? allowed.error : ''}}></div>
-                            {!allowed.error && <span>Failed to authenticate client ${id}</span>}
-                        </p>
-                        <div className="flex justify-center">
-                            <button
-                                className="mt-4 bg-red-400 hover:bg-red-600 px-16 py-3 rounded duration-300"
-                                onClick={() => setShowAuth(true)}
-                            >
-                                Re-authenticate
-                            </button>
+                    {!allowed.validating ?
+                        <div className="bg-red-800 rounded-lg text-red-50 w-1/2 p-8">
+                            <p>This client has failed to authenticate.</p>
+                            <p className="mt-2 text-sm text-red-300">
+                                <span>Error details: </span>
+                                <div dangerouslySetInnerHTML={{__html: allowed.error ? allowed.error : ''}}></div>
+                                {!allowed.error && <span>Failed to authenticate client ${id}</span>}
+                            </p>
+                            <div className="flex justify-center">
+                                <button
+                                    className="mt-4 bg-red-400 hover:bg-red-600 px-16 py-3 rounded duration-300"
+                                    onClick={() => setShowAuth(true)}
+                                >
+                                    Re-authenticate
+                                </button>
+                            </div>
                         </div>
-                    </div>
+                        :
+                        <div className="bg-cyan-800 rounded-lg text-cyan-50 w-1/2 p-8">
+                            <div className="flex justify-between mb-4">
+                                <p className="text-xl font-bold">Validating authentication from cache...</p>
+                                <span className="block">
+                                    <i className="mr-2 fa fa-spinner fa-spin fa-2x"></i>
+                                </span>
+                            </div>
+                            <div className="text-sm">
+                                <p>Waiting on authenticator to acquire a valid access token, either directly from cache or by attempting to refresh MSA through its refresh token.</p>
+                                <br/>
+                                <p>This shouldn't take more than a few seconds.</p>
+                            </div>
+                        </div>
+                    }
                 </div>
             }
             {showAuth && (
