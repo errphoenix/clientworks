@@ -174,7 +174,7 @@ export default function ClientManager() {
 
     return (
         <main className="p-4">
-            {allowed.value ?
+            {allowed.value || !client?.auth ?
             <div className="bg-slate-800 rounded-lg p-6">
                 <div className="flex items-center space-x-4">
                     <img
@@ -438,7 +438,7 @@ Does not guarantee instant client disconnection, will likely be recognised as a 
             </div>
                 :
                 <div className="flex justify-center mt-12">
-                    {!allowed.validating ?
+                    {!allowed.validating && client?.auth ?
                         <div className="bg-red-800 rounded-lg text-red-50 w-1/2 p-8">
                             <p>This client has failed to authenticate.</p>
                             <p className="mt-2 text-sm text-red-300">
