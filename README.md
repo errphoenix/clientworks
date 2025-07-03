@@ -24,12 +24,8 @@ Clientworks stores its data in the system's data directory, this is:
 
 These directories store the clients list (`clients.json`), server list (`servers.json`) and authentication cache (`auth_cache.json`).
 
----
-
-**(!) IMPORTANT** 
-While the `clients.json` and `servers.json` don't contain any sensible information, the authentication cache, `auth_cache.json`, contains your account's access token, so do **not** share this file to people you don't trust, as it may be used to gain access to your account if the token is still valid.
-
----
+> [!WARNING]
+> While the `clients.json` and `servers.json` don't contain any sensible information, the authentication cache, in `auth_cache.json`, contains your account's access token, so do **not** share this file to people you don't trust, as it may be used to gain access to your account if the token is still valid.
 
 ## Upcoming Features
 * **More in-depth instance page** | to view more details on the server you're connected to (such as player count, player list, uptime)
