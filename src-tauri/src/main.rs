@@ -3,8 +3,15 @@
 
 #[tokio::main]
 async fn main() {
+    let log_filter = {
+        if cfg!(debug_assertions) {
+            log::LevelFilter::Debug
+        } else {
+            log::LevelFilter::Info
+        }
+    };
     env_logger::builder()
-        .filter_level(log::LevelFilter::Info)
+        .filter_level(log_filter)
         .init();
     clientworks_lib::run().await
 }

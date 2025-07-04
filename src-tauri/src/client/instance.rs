@@ -224,7 +224,6 @@ async fn handle(client: Client, event: Event, state: ClientState) -> anyhow::Res
                 chat.push(msg.message().to_ansi());
             }
             client::hooks::chatlog::set_active(state.instance_key, state.chat_history.clone());
-            *state.run_state.lock().unwrap() = false; // update on UI
         },
         Event::Init => {
             let mut chat = state.chat_history.lock().unwrap();
@@ -247,6 +246,7 @@ async fn handle(client: Client, event: Event, state: ClientState) -> anyhow::Res
                     let mut chat = state.chat_history.lock().unwrap();
                     let red = Ansi::rgb(ChatFormatting::Red.color().unwrap());
                     chat.push(format!("{red}Disconnected from server: {}", packet.reason));
+                    *state.run_state.lock().unwrap() = false; // update on UI
                 }
                 _ => {}
             }

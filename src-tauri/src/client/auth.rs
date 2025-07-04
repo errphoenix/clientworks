@@ -1,9 +1,9 @@
-use azalea_auth::{AccessTokenResponse, DeviceCodeResponse, MinecraftTokenResponse, cache::ExpiringValue, ProfileResponse};
+use azalea_auth::{AccessTokenResponse, DeviceCodeResponse, MinecraftTokenResponse, cache::ExpiringValue, ProfileResponse, RefreshMicrosoftAuthTokenError};
 use std::{
     fmt::Display,
     time::Duration
 };
-use log::info;
+use log::{debug, info};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
@@ -53,6 +53,43 @@ impl MinecraftProfile {
             skins: None,
             capes: None,
             authenticated: false
+        }
+    }
+}
+
+/// Attempts to refresh the provided MSA token, using its refresh token.
+/// This method does not verify whether the MSA token has expired or not.
+///
+/// # Parameters
+/// * `state_callback` - a callback passing a reference to [`AuthState`] as an argument which
+///   can be useful to display the current state of the authentication process to the user.
+///   Provide an empty callback `|_| {}` if you don't want to display anything.
+/// * `msa` - the MSA token to refresh
+///
+/// # Returns
+/// A result containing a valid MSA token or a [`azalea_auth::RefreshMicrosoftAuthTokenError`] error
+pub async fn refresh_ms<Scb>(
+    mut state_callback: Scb,
+    msa: &ExpiringValue<AccessTokenResponse>,
+) -> Result<ExpiringValue<AccessTokenResponse>, RefreshMicrosoftAuthTokenError>
+where
+    Scb: FnMut(&AuthState),
+{
+    if cfg!(debug_assertions) { debug!("Requested token refresh...") }
+    match azalea_auth::refresh_ms_auth_token(
+        &reqwest::Client::new(),
+        &msa.data.refresh_token,
+        None, None
+    ).await {
+        Ok(msa) => {
+            state_callback(&AuthState::Working("Successfully refreshed MSA token".to_owned()));
+            Ok(msa)
+        },
+        Err(e) => {
+            state_callback(&AuthState::Error(format!(
+                "Failed to refresh MSA token. Re-authentication is required. ({e})"
+            )));
+            Err(e)
         }
     }
 }

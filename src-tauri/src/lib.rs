@@ -2,14 +2,13 @@ mod api;
 mod client;
 
 use std::{
-    fs,
-    sync::Mutex
+    fs, sync::{Mutex, Arc}
 };
 use tauri::Manager;
 
 pub struct AppState {
     pub com_channel: Mutex<client::hooks::Channel>,
-    pub api_context: Mutex<api::ApiContext>,
+    pub api_context: Arc<Mutex<api::ApiContext>>,
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -24,7 +23,7 @@ pub async fn run() {
                 );
             app.manage(AppState {
                 com_channel: Mutex::new(client::hooks::init(app.handle().clone())),
-                api_context: Mutex::new(api::load_from_dir(app.path().app_data_dir().unwrap()))
+                api_context: Arc::new(Mutex::new(api::load_from_dir(app.path().app_data_dir().unwrap())))
             });
             {
                 let state = app.state::<AppState>();
